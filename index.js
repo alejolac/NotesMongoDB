@@ -1,7 +1,9 @@
 const express = require('express')
+require('dotenv').config()
 const app = express()
 const port = process.env.PORT || 3000
 const cors = require('cors')
+const mongoose = require('mongoose')
 
 app.use(cors())
 
@@ -27,16 +29,26 @@ let notes = [
         important: true
     }
 ]
+const url = process.env.MONGODB_URI
+
+mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, })
+    .then(() => {
+        console.log('Connected to MongoDB')
+    })
+    .catch((error) => {
+        console.log('Error connecting to MongoDB:', error.message)
+    })
+
+const noteSchema = new mongoose.Schema({
+    content: String,
+    date: Date,
+    important: Boolean,
+})
+
+const Note = mongoose.model('Note', noteSchema)
 
 const unknowRoute = (req, res) => {
-    response.status(404).send({ error: 'unknown endpoint' })
-}
-
-const generateID = () => {
-    const MAXid = notes.length > 0
-        ? Math.max(...notes.map(n => n.id))
-        : 0
-    return MAXid + 1
+    res.status(404).send({ error: 'unknown endpoint' })
 }
 
 app.get(`/`, (req, res) => {
@@ -44,23 +56,27 @@ app.get(`/`, (req, res) => {
 })
 
 app.get('/api/notes', (request, response) => {
-    response.json(notes)
+    Note.find({}).then(notes => {
+        response.json(notes)
+    })
 })
 
-app.get(`/api/notes/:id`, (req, res) => {
-    const id = Number(req.params.id)
-    const note = notes.find(note => note.id === id)
+app.get(`/api/notes/:id`, async (req, res) => {
+    const id = req.params.id
+    const note = await Note.findById(id)
     if (note) {
         res.json(note)
-    } else {
-        res.status(400).end()
+    }
+    else {
+        res.status(404).end()
     }
 })
 
-app.delete(`/api/notes/:id`, (req, res) => {
-    const id = Number(req.params.id)
-    notes = notes.filter(note => note.id !== id)
-    res.status(204).end()
+app.delete(`/api/notes/:id`, async (req, res) => {
+    const id = req.params.id
+    const deleteNote = await Note.findByIdAndDelete(id)
+    res.json(deleteNote).status(204).end()
+    console.log(deleteNote)
 })
 
 app.post(`/api/notes`, (req, res) => {
@@ -72,26 +88,23 @@ app.post(`/api/notes`, (req, res) => {
         })
     }
 
-    const note = {
+    const note = new Note({
         content: body.content,
-        important: body.important || false,
         date: new Date(),
-        id: generateID(),
-    }
+        important: body.important || false,
+        id: new mongoose.Types.ObjectId()
+    })
 
-    notes = notes.concat(note)
-
-    res.json(note)
+    note.save().then(savedNote => {
+        res.json(savedNote)
+    })
 })
 
-app.put(`/api/notes/:id`, (req, res) => {
-    const id = Number(req.params.id)
-    const body = req.body
-    let note = notes.find(note => note.id === id)
-    if (note) {
-        notes = notes.map(note => note.id === id ? body : note)
-        res.json(body)
-    }
+app.put(`/api/notes/:id`, async (req, res) => {
+    const id = req.params.id
+    await Note.updateOne({ _id: id }, req.body)
+    const updateNote = await Note.findById(id)
+    res.json(updateNote)
 })
 
 
