@@ -29,7 +29,7 @@ let notes = [
         important: true
     }
 ]
-const url = process.env.MONGODB_URI
+const url = `mongodb://alejo:alejo123@ac-wemx38j-shard-00-00.mbuupbd.mongodb.net:27017,ac-wemx38j-shard-00-01.mbuupbd.mongodb.net:27017,ac-wemx38j-shard-00-02.mbuupbd.mongodb.net:27017/?ssl=true&replicaSet=atlas-92fx11-shard-0&authSource=admin&retryWrites=true&w=majority`
 
 mongoose.connect(url, { useNewUrlParser: true, useUnifiedTopology: true, })
     .then(() => {
